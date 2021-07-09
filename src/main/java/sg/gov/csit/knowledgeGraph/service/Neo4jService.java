@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
@@ -21,7 +19,6 @@ import sg.gov.csit.knowledgeGraph.domain.Response.QueryResponse;
 import sg.gov.csit.knowledgeGraph.domain.Response.Relationship;
 import sg.gov.csit.knowledgeGraph.domain.Response.Result;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.EdgeObject;
-import sg.gov.csit.knowledgeGraph.domain.fieldObject.GraphObject;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.NodeObject;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.PropertiesObject;
 import sg.gov.csit.knowledgeGraph.web.dto.response.GraphResponseDTO;
@@ -47,7 +44,9 @@ public class Neo4jService {
 	public void findOne(String label, String name) {
 	}
 
-	public QueryResponse findAll() {
+	public List<QueryResponse> findAll() {
+		
+		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
 		List<String> queryStatements = new ArrayList<String>();
 		//get all nodes and relationships
 		queryStatements.add(
@@ -58,67 +57,204 @@ public class Neo4jService {
 		queryStatements.add(
 				"MATCH (n) WHERE NOT (n)-[]-() " +
 				"RETURN n");
-		QueryResponse queryResponse = apiService.queryWithoutCommit(queryStatements);		
-		return queryResponse;
+		queryResponses.add(apiService.queryWithoutCommit(queryStatements));		
+		return queryResponses;
 	}
 	
 	public List<String> getOneDegreeQueryStatement(String name) {
-		
+
+		name = name.replace("'", "\\'");
 		List<String> oneDegreeQueryStatement = new ArrayList<String>();
 		//get all relationship for the node
 		oneDegreeQueryStatement.add(
-				"MATCH (n) WHERE n.name = '" + name + "' " + 
+				"MATCH (n) " + 
+				"WHERE n.name = " + getFilteredString(name) + " " + 
 				"MATCH (n)-[r]-(m) " + 
 				"RETURN n,r,m"
 		);
 		//get node with no relationship
 		oneDegreeQueryStatement.add(
-				"MATCH (n) WHERE n.name = '" + name + "' " + 
+				"MATCH (n) " + 
+				"WHERE n.name = " + getFilteredString(name) + " " + 
 				"RETURN n"
 		);
 		return oneDegreeQueryStatement;
 	}
 
-	public QueryResponse findNeighbors(String name) {
+	public List<QueryResponse> findNeighbors(List<String> names) {
+
+		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
 		
-		QueryResponse queryResponse = apiService.queryWithoutCommit(getOneDegreeQueryStatement(name));
-		return queryResponse;
+		for (String name : names) {
+			QueryResponse queryResponse = apiService.queryWithoutCommit(getOneDegreeQueryStatement(name));
+//			printResult(queryResponse);
+			queryResponses.add(queryResponse);
+		}
+		return queryResponses;
 	}
 	
-	public QueryResponse findGraphHistory(String search, Integer degree) {
-		
-		String[] names = search.split(", ");
-		
+	public List<QueryResponse> findGraph(List<String> names, Integer degree) {
+
+		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
 		List<String> queryStatements = new ArrayList<String>();
-		String arrayString = getArrayString(names); 
+		
 		queryStatements.add(
-				"MATCH (n) where n.name IN " + arrayString + " " + 
+				"MATCH (n) " + 
+				"where n.name IN " + getArrayString(names) + " " + 
 				"WITH collect(n) as nodes " + 
 				"UNWIND nodes as n " + 
 				"UNWIND nodes as m " + 
-				"WITH * WHERE id(n) > id(m) " + 
+				"WITH * " + 
+				"WHERE id(n) > id(m) " + 
 				"MATCH path = (n)-[*.." + degree.toString() + "]-(m) " + 
 //				"RETURN path ORDER BY length(path)" 
 				"RETURN path"
 		);
+		queryResponses.add(apiService.queryWithoutCommit(queryStatements));
+		
 		for (String name : names) {
-			queryStatements.addAll(getOneDegreeQueryStatement(name));
+			QueryResponse queryResponse = apiService.queryWithoutCommit(getOneDegreeQueryStatement(name));
+			queryResponses.add(queryResponse);
 		}
-		QueryResponse queryResponse = apiService.queryWithoutCommit(queryStatements);
-		return queryResponse;
+		return queryResponses;
 	}
 	
-	public String getArrayString(String[] names) {
+	public String getArrayString(List<String> names) {
 		
 		String result = "[";
-		for (int i=0; i<names.length; i++) {
+		for (int i=0; i<names.size(); i++) {
 			if (i != 0) {
 				result += ", ";
 			}
-			result += "'" + names[i].replace("'", "\\'") + "'";
+			result += getFilteredString(names.get(i));
 		}
 		result += "]";
 		return result;
+	}
+	
+	public String getFilteredString(String name) {
+		return "'" + name.replace("'", "\\'") + "'";
+	}
+	
+	public GraphResponseDTO findBlacklist(GraphResponseDTO graphResponseDTO, List<String> blacklist) {
+		
+		if (blacklist.size() == 1 && blacklist.get(0) == "") {
+			return graphResponseDTO;
+		}
+		
+		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
+		Map<Long, NodeObject> nodeMap = new HashMap<Long, NodeObject>();
+		Map<Long, EdgeObject> edgeMap = new HashMap<Long, EdgeObject>();
+		
+		for(NodeObject node : graphResponseDTO.getGraph().getNodes()) {
+			List<String> queryStatements = new ArrayList<String>();
+			nodeMap.put(node.getId(), node);
+			//for each node, check it's properties against the blacklist
+			for (String value : blacklist) {
+				queryStatements.add(
+					"MATCH (n) " + 
+					"WHERE n.name = " + getFilteredString(node.getLabel()) + " " + 
+					"MATCH (n)-[r]-(m) " + 
+					"WHERE any(prop in keys(m) WHERE TOSTRING(m[prop]) CONTAINS " + getFilteredString(value) + ") " + 
+					"RETURN n,r,m"
+				);
+			}
+			//for blacklist edge
+			queryStatements.add(
+				"MATCH (n) " + 
+				"WHERE n.name = " + getFilteredString(node.getLabel()) + " " + 
+				"MATCH (n)-[r]-(m) " + 
+				"WHERE any(item in " + getArrayString(blacklist) + " WHERE type(r) CONTAINS item) " + 
+				"RETURN n,r,m"
+			);
+			queryResponses.add(apiService.queryWithoutCommit(queryStatements));
+		}
+		
+		for(EdgeObject edge : graphResponseDTO.getGraph().getEdges()) {
+			edgeMap.put(edge.getId(), edge);
+		}
+		
+		List<NodeObject> nodes = graphResponseDTO.getGraph().getNodes();
+		List<EdgeObject> edges = graphResponseDTO.getGraph().getEdges();
+		
+		for (QueryResponse currentQueryResponse : queryResponses) {
+			for (Result result : currentQueryResponse.getResults()) {
+				for (Data data: result.getData()) {
+					
+					for (Node nodeData : data.getGraph().getNodes()) {
+						
+						if (!nodeMap.containsKey(nodeData.getId())) {
+							NodeObject node = new NodeObject(
+									nodeData.getId(), 
+									nodeData.getLabels().get(0),
+									(String) nodeData.getProperties().get("name"),
+									nodeData.getProperties()
+							);
+							node.setColor("#ff0000");
+							nodeMap.put(nodeData.getId(), node);
+							nodes.add(node);
+							
+						} else {
+							NodeObject node = nodeMap.get(nodeData.getId());
+							node.setColor("#ff0000");
+							for (NodeObject currentNode : nodes) {
+								if (currentNode.getId() == nodeData.getId()) {
+									currentNode = node;
+									break;
+								}
+							}
+						}
+					}
+					
+					for (Relationship relationship : data.getGraph().getRelationships()) {
+						
+						if (!edgeMap.containsKey(relationship.getId())) {
+							EdgeObject edge = new EdgeObject(
+								relationship.getId(), 
+								relationship.getType(),
+								relationship.getStartNode(),
+								nodeMap.get(relationship.getStartNode()).getLabel(),
+								relationship.getEndNode(),
+								nodeMap.get(relationship.getEndNode()).getLabel()
+							);
+							edge.setColor("#ff0000");
+							edge.setWidth(5);
+							edgeMap.put(relationship.getId(), edge);
+							edges.add(edge);
+							
+						} else {
+							EdgeObject edge = edgeMap.get(relationship.getId());
+							edge.setColor("#ff0000");
+							edge.setWidth(5);
+							for (EdgeObject currentEdge : edges) {
+								if (currentEdge.getId() == relationship.getId()) {
+									currentEdge = edge;
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		graphResponseDTO.getGraph().setNodes(nodes);
+		graphResponseDTO.getGraph().setEdges(edges);
+		return graphResponseDTO;
+	}
+	
+	public void printResult(QueryResponse queryResponse) {
+		
+		for (Result result : queryResponse.getResults()) {
+//			for (Data data : result.getData()) {
+				try {
+					String messageJsonString = objectMapper.writeValueAsString(result);
+					System.out.println(messageJsonString);
+				} catch (JsonProcessingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+//			}
+		}
 	}
 	
 	public void deleteOne(Long id) {

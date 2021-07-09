@@ -14,6 +14,10 @@ public class EdgeObject {
 	
     private String toLabel;
     
+    private String color;
+    
+    private Integer width;
+    
     public Long getId() {
     	return this.id;
     }
@@ -58,6 +62,22 @@ public class EdgeObject {
     	this.toLabel = toLabel;
     }
     
+    public String getColor() {
+    	return this.color;
+    }
+    
+    public void setColor(String color) {
+    	this.color = color;
+    }
+    
+    public Integer getWidth() {
+    	return this.width;
+    }
+    
+    public void setWidth(Integer width) {
+    	this.width = width;
+    }
+    
     public EdgeObject() {
     	
     }
@@ -69,5 +89,7 @@ public class EdgeObject {
     	this.fromLabel = fromLabel;
     	this.to = to;
     	this.toLabel = toLabel;
+    	this.color = "#000000";
+    	this.width = 0;
     }
 }

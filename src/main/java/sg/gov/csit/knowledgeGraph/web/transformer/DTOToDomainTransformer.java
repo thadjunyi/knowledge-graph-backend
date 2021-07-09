@@ -1,5 +1,6 @@
 package sg.gov.csit.knowledgeGraph.web.transformer;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,6 +10,8 @@ import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import sg.gov.csit.knowledgeGraph.domain.Response.Data;
 import sg.gov.csit.knowledgeGraph.domain.Response.Node;
@@ -27,9 +30,9 @@ public class DTOToDomainTransformer {
 	@Autowired
 	ModelMapper modelMapper;
 
-	public GraphResponseDTO convertQueryResponseToGraphResponseDTO(QueryResponse queryResponse) {
+	public GraphResponseDTO convertQueryResponseToGraphResponseDTO(List<String> names, List<QueryResponse> queryResponses) {
 		
-		java.lang.reflect.Type targetType = new TypeToken<PropertiesObject>() {}.getType();
+//		java.lang.reflect.Type targetType = new TypeToken<Map<String, Object>>() {}.getType();
 //		GraphResponseDTO graphResponseDTO =  modelMapper.map(queryResponse, targetType);
 //		return graphResponseDTO;
 		
@@ -41,51 +44,49 @@ public class DTOToDomainTransformer {
 		List<NodeObject> nodes = new ArrayList<NodeObject>();
 		List<EdgeObject> edges = new ArrayList<EdgeObject>();
 		
-		for (Result result : queryResponse.getResults()) {
-			for (Data data: result.getData()) {
-				
-				for (Node nodeData : data.getGraph().getNodes()) {
+		for (QueryResponse queryResponse : queryResponses) {
+			for (Result result : queryResponse.getResults()) {
+				for (Data data: result.getData()) {
 					
-					if (!nodeMap.containsKey(nodeData.getId())) {
-						PropertiesObject propertiesObject =  modelMapper.map(nodeData.getProperties(), targetType);
-						NodeObject node = new NodeObject(
-								nodeData.getId(), 
-								nodeData.getLabels().get(0),
-								nodeData.getProperties().getName(),
-								0,
-								propertiesObject
-						);
-						nodes.add(node);
-						nodeMap.put(nodeData.getId(), node);
-					}
-				}
-				
-				for (Relationship relationship : data.getGraph().getRelationships()) {
-					
-					if (!edgeMap.containsKey(relationship.getId())) {
-						edgeMap.put(relationship.getId(), relationship.getProperties().getName());
-						EdgeObject edge = new EdgeObject(
-							relationship.getId(), 
-							relationship.getType(),
-							relationship.getStartNode(),
-							nodeMap.get(relationship.getStartNode()).getLabel(),
-							relationship.getEndNode(),
-							nodeMap.get(relationship.getEndNode()).getLabel()
-						);
-						edges.add(edge);
+					for (Node nodeData : data.getGraph().getNodes()) {
 						
-						NodeObject startNode = nodeMap.get(relationship.getStartNode());
-						startNode.setLink(startNode.getLink()+1);
-						nodeMap.put(relationship.getStartNode(), startNode);
-
-						NodeObject endNode = nodeMap.get(relationship.getEndNode());
-						endNode.setLink(endNode.getLink()+1);
-						nodeMap.put(relationship.getEndNode(), endNode);
+						if (!nodeMap.containsKey(nodeData.getId())) {
+//							Map<String, Object> map = modelMapper.map(nodeData.getProperties(), targetType);
+							NodeObject node = new NodeObject(
+									nodeData.getId(), 
+									nodeData.getLabels().get(0),
+									(String) nodeData.getProperties().get("name"),
+									nodeData.getProperties()
+							);
+							for (String name : names) {
+								if (name.equals(node.getLabel())) {
+									node.setSize(20);
+									break;
+								}
+							}
+							nodes.add(node);
+							nodeMap.put(nodeData.getId(), node);
+						}
+					}
+					
+					for (Relationship relationship : data.getGraph().getRelationships()) {
+						
+						if (!edgeMap.containsKey(relationship.getId())) {
+							edgeMap.put(relationship.getId(), relationship.getProperties().getName());
+							EdgeObject edge = new EdgeObject(
+								relationship.getId(), 
+								relationship.getType(),
+								relationship.getStartNode(),
+								nodeMap.get(relationship.getStartNode()).getLabel(),
+								relationship.getEndNode(),
+								nodeMap.get(relationship.getEndNode()).getLabel()
+							);
+							edges.add(edge);
+						}
 					}
 				}
 			}
 		}
-		
 		graphObject.setNodes(nodes);
 		graphObject.setEdges(edges);
 		graphResponseDTO.setGraph(graphObject);

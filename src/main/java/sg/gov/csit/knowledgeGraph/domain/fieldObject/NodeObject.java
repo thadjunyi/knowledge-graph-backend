@@ -1,5 +1,7 @@
 package sg.gov.csit.knowledgeGraph.domain.fieldObject;
 
+import java.util.Map;
+
 public class NodeObject {
 
 	private Long id;
@@ -8,9 +10,11 @@ public class NodeObject {
 	
 	private String label;
 	
-	private Integer link;
+	private Integer size;
 	
-	private PropertiesObject properties;
+	private String color;
+	
+	private Map<String, Object> properties;
     
     public void setId(Long id) {
     	this.id = id;
@@ -28,14 +32,6 @@ public class NodeObject {
     	return this.type;
     }
     
-    public void setLink(Integer link) {
-    	this.link = link;
-    }
-    
-    public Integer getLink() {
-    	return this.link;
-    }
-    
     public void setLabel(String label) {
     	this.label = label;
     }
@@ -44,11 +40,27 @@ public class NodeObject {
     	return this.label;
     }
     
-    public void setProperties(PropertiesObject properties) {
+    public void setSize(Integer size) {
+    	this.size = size;
+    }
+    
+    public Integer getSize() {
+    	return this.size;
+    }
+    
+    public void setColor(String color) {
+    	this.color = color;
+    }
+    
+    public String getColor() {
+    	return this.color;
+    }
+    
+    public void setProperties(Map<String, Object> properties) {
     	this.properties = properties;
     }
     
-    public PropertiesObject getProperties() {
+    public Map<String, Object> getProperties() {
     	return this.properties;
     }
     
@@ -56,11 +68,11 @@ public class NodeObject {
     	
     }
     
-    public NodeObject(Long id, String type, String label, Integer link, PropertiesObject properties) {
+    public NodeObject(Long id, String type, String label, Map<String, Object> properties) {
     	this.id = id;
     	this.type = type;
     	this.label = label;
-    	this.link = link;
+    	this.size = 10;
     	this.properties = properties;
     }
 }

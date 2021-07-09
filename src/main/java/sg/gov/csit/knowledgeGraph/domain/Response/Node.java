@@ -1,6 +1,7 @@
 package sg.gov.csit.knowledgeGraph.domain.Response;
 
 import java.util.List;
+import java.util.Map;
 
 public class Node {
 
@@ -8,7 +9,7 @@ public class Node {
 	
 	private List<String> labels;
 	
-	private Properties properties;
+	private Map<String, Object> properties;
     
     public void setId(Long id) {
     	this.id = id;
@@ -26,11 +27,11 @@ public class Node {
     	return this.labels;
     }
     
-    public void setProperties(Properties properties) {
+    public void setProperties(Map<String, Object> properties) {
     	this.properties = properties;
     }
     
-    public Properties getProperties() {
+    public Map<String, Object> getProperties() {
     	return this.properties;
     }
 }

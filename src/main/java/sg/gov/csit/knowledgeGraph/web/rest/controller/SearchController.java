@@ -1,5 +1,7 @@
 package sg.gov.csit.knowledgeGraph.web.rest.controller;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -29,29 +31,35 @@ public class SearchController {
 	DTOToDomainTransformer dTOToDomainTransformer;
 
 	@RequestMapping(method=RequestMethod.GET, path= {"/getAll"})
-	public ResponseEntity<GraphResponseDTO> getAll(HttpServletRequest request, HttpServletResponse response) {
+	public ResponseEntity<GraphResponseDTO> getAll(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=false) String search) {
 		
-//		List<Node> entities = nodeService.findAll();
-//		return new ResponseEntity<List<Node>>(entities, HttpStatus.OK);
-		QueryResponse queryResponse = neo4jService.findAll();
-		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(queryResponse);
+		List<String> names = new ArrayList<String>(Arrays.asList(search.split(",")));
+		List<QueryResponse> queryResponse = neo4jService.findAll();
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(names, queryResponse);
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 	
 	@RequestMapping(method=RequestMethod.GET, path= {"/findNeighbors"})
 	public ResponseEntity<GraphResponseDTO> findNeighbors(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search) {
 		
-		QueryResponse queryResponse = neo4jService.findNeighbors(search);
-		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(queryResponse);
+		List<String> names = new ArrayList<String>(Arrays.asList(search.split(",")));
+		List<QueryResponse> queryResponse = neo4jService.findNeighbors(names);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(names, queryResponse);
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 	
-	@RequestMapping(method=RequestMethod.GET, path= {"/findGraphHistory"})
-	public ResponseEntity<GraphResponseDTO> findGraphHistory(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(defaultValue="1") Integer degree) {
+	@RequestMapping(method=RequestMethod.GET, path= {"/findGraph"})
+	public ResponseEntity<GraphResponseDTO> findGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(defaultValue="1") Integer degree, @RequestParam(required=true) String blacklist) {
 		
-		//The Matrix Reloaded, The Matrix Revolutions, The Devil's Advocate, Taylor Hackford
-		QueryResponse queryResponse = neo4jService.findGraphHistory(search, degree);
-		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(queryResponse);
+		//The Matrix Reloaded,The Matrix Revolutions,The Devil's Advocate,Taylor Hackford
+		//Lana Wachowski,Lilly Wachowski
+		//ACTED_IN
+		
+		List<String> names = new ArrayList<String>(Arrays.asList(search.split(",")));
+		List<String> blacklisted = new ArrayList<String>(Arrays.asList(blacklist.split(",")));
+		List<QueryResponse> queryResponse = neo4jService.findGraph(names, degree);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(names, queryResponse);
+		graphResponseDTO = neo4jService.findBlacklist(graphResponseDTO, blacklisted);
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 }
