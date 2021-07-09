@@ -14,9 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import sg.gov.csit.knowledgeGraph.domain.Response.QueryResponse;
-import sg.gov.csit.knowledgeGraph.domain.Unused.Node;
 import sg.gov.csit.knowledgeGraph.service.Neo4jService;
-import sg.gov.csit.knowledgeGraph.service.NodeService;
 import sg.gov.csit.knowledgeGraph.web.dto.response.GraphResponseDTO;
 import sg.gov.csit.knowledgeGraph.web.transformer.DTOToDomainTransformer;
 
@@ -25,18 +23,35 @@ import sg.gov.csit.knowledgeGraph.web.transformer.DTOToDomainTransformer;
 public class SearchController {
 	
 	@Autowired
-	private NodeService nodeService;
-	
-	@Autowired
 	private Neo4jService neo4jService;
 	
 	@Autowired
 	DTOToDomainTransformer dTOToDomainTransformer;
-	
-	@RequestMapping(method=RequestMethod.POST, path= {""})
-	public ResponseEntity<?> search(HttpServletRequest request, HttpServletResponse response) {
+
+	@RequestMapping(method=RequestMethod.GET, path= {"/getAll"})
+	public ResponseEntity<GraphResponseDTO> getAll(HttpServletRequest request, HttpServletResponse response) {
 		
-		HttpStatus httpStatus = HttpStatus.OK;
-		return new ResponseEntity<>("result is out", httpStatus);
+//		List<Node> entities = nodeService.findAll();
+//		return new ResponseEntity<List<Node>>(entities, HttpStatus.OK);
+		QueryResponse queryResponse = neo4jService.findAll();
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(queryResponse);
+		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
+	}
+	
+	@RequestMapping(method=RequestMethod.GET, path= {"/findNeighbors"})
+	public ResponseEntity<GraphResponseDTO> findNeighbors(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search) {
+		
+		QueryResponse queryResponse = neo4jService.findNeighbors(search);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(queryResponse);
+		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
+	}
+	
+	@RequestMapping(method=RequestMethod.GET, path= {"/findGraphHistory"})
+	public ResponseEntity<GraphResponseDTO> findGraphHistory(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(defaultValue="1") Integer degree) {
+		
+		//The Matrix Reloaded, The Matrix Revolutions, The Devil's Advocate, Taylor Hackford
+		QueryResponse queryResponse = neo4jService.findGraphHistory(search, degree);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(queryResponse);
+		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 }

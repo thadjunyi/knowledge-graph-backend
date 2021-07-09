@@ -34,7 +34,8 @@ public class DTOToDomainTransformer {
 //		return graphResponseDTO;
 		
 		GraphResponseDTO graphResponseDTO = new GraphResponseDTO();
-		Map<Long, String> map = new HashMap<Long, String>();
+		Map<Long, NodeObject> nodeMap = new HashMap<Long, NodeObject>();
+		Map<Long, String> edgeMap = new HashMap<Long, String>();
 		
 		GraphObject graphObject = new GraphObject();
 		List<NodeObject> nodes = new ArrayList<NodeObject>();
@@ -45,32 +46,42 @@ public class DTOToDomainTransformer {
 				
 				for (Node nodeData : data.getGraph().getNodes()) {
 					
-					if (!map.containsKey(nodeData.getId())) {
-						map.put(nodeData.getId(), nodeData.getProperties().getName());
+					if (!nodeMap.containsKey(nodeData.getId())) {
 						PropertiesObject propertiesObject =  modelMapper.map(nodeData.getProperties(), targetType);
-						List<String> labels = nodeData.getLabels();
-						labels.remove("Node");
-						
 						NodeObject node = new NodeObject(
 								nodeData.getId(), 
-								labels.get(0),
+								nodeData.getLabels().get(0),
 								nodeData.getProperties().getName(),
+								0,
 								propertiesObject
 						);
 						nodes.add(node);
+						nodeMap.put(nodeData.getId(), node);
 					}
 				}
 				
 				for (Relationship relationship : data.getGraph().getRelationships()) {
-					EdgeObject edge = new EdgeObject(
-						relationship.getId(), 
-						relationship.getType(),
-						relationship.getStartNode(),
-						map.get(relationship.getStartNode()),
-						relationship.getEndNode(),
-						map.get(relationship.getEndNode())
-					);
-					edges.add(edge);
+					
+					if (!edgeMap.containsKey(relationship.getId())) {
+						edgeMap.put(relationship.getId(), relationship.getProperties().getName());
+						EdgeObject edge = new EdgeObject(
+							relationship.getId(), 
+							relationship.getType(),
+							relationship.getStartNode(),
+							nodeMap.get(relationship.getStartNode()).getLabel(),
+							relationship.getEndNode(),
+							nodeMap.get(relationship.getEndNode()).getLabel()
+						);
+						edges.add(edge);
+						
+						NodeObject startNode = nodeMap.get(relationship.getStartNode());
+						startNode.setLink(startNode.getLink()+1);
+						nodeMap.put(relationship.getStartNode(), startNode);
+
+						NodeObject endNode = nodeMap.get(relationship.getEndNode());
+						endNode.setLink(endNode.getLink()+1);
+						nodeMap.put(relationship.getEndNode(), endNode);
+					}
 				}
 			}
 		}

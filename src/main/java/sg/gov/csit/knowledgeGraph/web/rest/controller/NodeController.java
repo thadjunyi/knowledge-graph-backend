@@ -13,11 +13,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import sg.gov.csit.knowledgeGraph.domain.Response.QueryResponse;
 import sg.gov.csit.knowledgeGraph.domain.Unused.Node;
-import sg.gov.csit.knowledgeGraph.service.Neo4jService;
 import sg.gov.csit.knowledgeGraph.service.NodeService;
-import sg.gov.csit.knowledgeGraph.web.dto.response.GraphResponseDTO;
 import sg.gov.csit.knowledgeGraph.web.transformer.DTOToDomainTransformer;
 
 @RestController
@@ -26,9 +23,6 @@ public class NodeController {
 	
 	@Autowired
 	private NodeService nodeService;
-	
-	@Autowired
-	private Neo4jService neo4jService;
 	
 	@Autowired
 	DTOToDomainTransformer dTOToDomainTransformer;
@@ -65,16 +59,6 @@ public class NodeController {
 			httpStatus = HttpStatus.NOT_FOUND;
 		}
 		return new ResponseEntity<Node>(node, httpStatus);
-	}
-
-	@RequestMapping(method=RequestMethod.GET, path= {"/getAll"})
-	public ResponseEntity<GraphResponseDTO> getAll(HttpServletRequest request, HttpServletResponse response) {
-		
-//		List<Node> entities = nodeService.findAll();
-//		return new ResponseEntity<List<Node>>(entities, HttpStatus.OK);
-		QueryResponse queryResponse = neo4jService.findAll();
-		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(queryResponse);
-		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 
 	@RequestMapping(method=RequestMethod.DELETE, path= {"/deleteById"})

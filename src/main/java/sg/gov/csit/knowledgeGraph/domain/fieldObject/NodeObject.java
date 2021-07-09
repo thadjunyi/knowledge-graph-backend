@@ -8,6 +8,8 @@ public class NodeObject {
 	
 	private String label;
 	
+	private Integer link;
+	
 	private PropertiesObject properties;
     
     public void setId(Long id) {
@@ -24,6 +26,14 @@ public class NodeObject {
     
     public String getType() {
     	return this.type;
+    }
+    
+    public void setLink(Integer link) {
+    	this.link = link;
+    }
+    
+    public Integer getLink() {
+    	return this.link;
     }
     
     public void setLabel(String label) {
@@ -46,10 +56,11 @@ public class NodeObject {
     	
     }
     
-    public NodeObject(Long id, String type, String label, PropertiesObject properties) {
+    public NodeObject(Long id, String type, String label, Integer link, PropertiesObject properties) {
     	this.id = id;
     	this.type = type;
     	this.label = label;
+    	this.link = link;
     	this.properties = properties;
     }
 }

@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import sg.gov.csit.knowledgeGraph.domain.Request.QueryRequest;
 import sg.gov.csit.knowledgeGraph.domain.Request.Statement;
+import sg.gov.csit.knowledgeGraph.domain.Response.Data;
 import sg.gov.csit.knowledgeGraph.domain.Response.QueryResponse;
+import sg.gov.csit.knowledgeGraph.domain.Response.Result;
 
 @Service
 public class ApiService {
@@ -82,7 +84,7 @@ public class ApiService {
 			logger.debug("Unable to connect to {}:", url, e);
 		}
 		
-		printResult(queryResponse);
+//		printResult(queryResponse);
 		return queryResponse;
 	}
 	
@@ -108,6 +110,21 @@ public class ApiService {
 		java.lang.reflect.Type targetType = new TypeToken<QueryResponse>() {}.getType();
 		QueryResponse queryResponse =  modelMapper.map(response.getBody(), targetType);
 		return queryResponse;
+	}
+	
+	public void printResult(QueryResponse queryResponse) {
+		
+		for (Result result : queryResponse.getResults()) {
+			for (Data data : result.getData()) {
+				try {
+					String messageJsonString = objectMapper.writeValueAsString(data.getGraph());
+					System.out.println(messageJsonString);
+				} catch (JsonProcessingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 	
 	public void printResult(Object object) {
