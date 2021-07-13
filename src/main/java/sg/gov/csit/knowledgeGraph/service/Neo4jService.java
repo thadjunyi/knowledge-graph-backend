@@ -92,7 +92,7 @@ public class Neo4jService {
 		return queryResponses;
 	}
 	
-	public List<QueryResponse> findGraph(String search, Integer degree) {
+	public List<QueryResponse> findSearchGraph(String search, Integer degree) {
 
 		List<String> names = search != null ? new ArrayList<String>(Arrays.asList(search.split(","))) : new ArrayList<String>();
 		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
@@ -117,6 +117,15 @@ public class Neo4jService {
 			queryResponses.add(queryResponse);
 		}
 		return queryResponses;
+	}
+	
+	public List<QueryResponse> findPageRankGraph(String search) {
+
+		List<String> names = search != null ? new ArrayList<String>(Arrays.asList(search.split(","))) : new ArrayList<String>();
+		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
+		List<String> queryStatements = new ArrayList<String>();
+		
+		return findAll();
 	}
 	
 	public String getArrayString(List<String> names) {

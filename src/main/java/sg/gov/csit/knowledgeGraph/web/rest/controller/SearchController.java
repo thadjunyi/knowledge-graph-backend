@@ -46,10 +46,19 @@ public class SearchController {
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 	
-	@RequestMapping(method=RequestMethod.GET, path= {"/findGraph"})
-	public ResponseEntity<GraphResponseDTO> findGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(defaultValue="1") Integer degree, @RequestParam(required=true) String filter) {
+	@RequestMapping(method=RequestMethod.GET, path= {"/findSearchGraph"})
+	public ResponseEntity<GraphResponseDTO> findSearchGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(defaultValue="1") Integer degree, @RequestParam(required=true) String filter) {
 		
-		List<QueryResponse> queryResponse = neo4jService.findGraph(search, degree);
+		List<QueryResponse> queryResponse = neo4jService.findSearchGraph(search, degree);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponse);
+		graphResponseDTO = neo4jService.findFilters(graphResponseDTO, filter);
+		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
+	}
+	
+	@RequestMapping(method=RequestMethod.GET, path= {"/findPageRankGraph"})
+	public ResponseEntity<GraphResponseDTO> findPageRankGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(required=true) String filter) {
+		
+		List<QueryResponse> queryResponse = neo4jService.findPageRankGraph(search);
 		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponse);
 		graphResponseDTO = neo4jService.findFilters(graphResponseDTO, filter);
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
