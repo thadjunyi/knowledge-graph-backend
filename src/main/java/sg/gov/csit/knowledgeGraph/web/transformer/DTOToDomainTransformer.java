@@ -1,17 +1,14 @@
 package sg.gov.csit.knowledgeGraph.web.transformer;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.modelmapper.ModelMapper;
-import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import sg.gov.csit.knowledgeGraph.domain.Response.Data;
 import sg.gov.csit.knowledgeGraph.domain.Response.Node;
@@ -21,7 +18,6 @@ import sg.gov.csit.knowledgeGraph.domain.Response.Result;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.EdgeObject;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.GraphObject;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.NodeObject;
-import sg.gov.csit.knowledgeGraph.domain.fieldObject.PropertiesObject;
 import sg.gov.csit.knowledgeGraph.web.dto.response.GraphResponseDTO;
 
 @Component
@@ -30,12 +26,11 @@ public class DTOToDomainTransformer {
 	@Autowired
 	ModelMapper modelMapper;
 
-	public GraphResponseDTO convertQueryResponseToGraphResponseDTO(List<String> names, List<QueryResponse> queryResponses) {
+	public GraphResponseDTO convertQueryResponseToGraphResponseDTO(String search, List<QueryResponse> queryResponses) {
 		
 //		java.lang.reflect.Type targetType = new TypeToken<Map<String, Object>>() {}.getType();
-//		GraphResponseDTO graphResponseDTO =  modelMapper.map(queryResponse, targetType);
-//		return graphResponseDTO;
-		
+		List<String> names = search != null ? new ArrayList<String>(Arrays.asList(search.split(","))) : new ArrayList<String>();
+
 		GraphResponseDTO graphResponseDTO = new GraphResponseDTO();
 		Map<Long, NodeObject> nodeMap = new HashMap<Long, NodeObject>();
 		Map<Long, String> edgeMap = new HashMap<Long, String>();

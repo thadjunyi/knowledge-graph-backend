@@ -1,4 +1,4 @@
-package sg.gov.csit.projectname;
+package sg.gov.csit.knowledgeGraph;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

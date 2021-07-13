@@ -1,12 +1,12 @@
 package sg.gov.csit.knowledgeGraph.service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.modelmapper.ModelMapper;
-import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +20,6 @@ import sg.gov.csit.knowledgeGraph.domain.Response.Relationship;
 import sg.gov.csit.knowledgeGraph.domain.Response.Result;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.EdgeObject;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.NodeObject;
-import sg.gov.csit.knowledgeGraph.domain.fieldObject.PropertiesObject;
 import sg.gov.csit.knowledgeGraph.web.dto.response.GraphResponseDTO;
 
 @Service
@@ -63,26 +62,26 @@ public class Neo4jService {
 	
 	public List<String> getOneDegreeQueryStatement(String name) {
 
-		name = name.replace("'", "\\'");
 		List<String> oneDegreeQueryStatement = new ArrayList<String>();
 		//get all relationship for the node
 		oneDegreeQueryStatement.add(
 				"MATCH (n) " + 
-				"WHERE n.name = " + getFilteredString(name) + " " + 
+				"WHERE n.name CONTAINS " + getFilteredString(name) + " " + 
 				"MATCH (n)-[r]-(m) " + 
 				"RETURN n,r,m"
 		);
 		//get node with no relationship
 		oneDegreeQueryStatement.add(
 				"MATCH (n) " + 
-				"WHERE n.name = " + getFilteredString(name) + " " + 
+				"WHERE n.name CONTAINS " + getFilteredString(name) + " " + 
 				"RETURN n"
 		);
 		return oneDegreeQueryStatement;
 	}
 
-	public List<QueryResponse> findNeighbors(List<String> names) {
+	public List<QueryResponse> findNeighbors(String search) {
 
+		List<String> names = search != null ? new ArrayList<String>(Arrays.asList(search.split(","))) : new ArrayList<String>();
 		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
 		
 		for (String name : names) {
@@ -93,8 +92,9 @@ public class Neo4jService {
 		return queryResponses;
 	}
 	
-	public List<QueryResponse> findGraph(List<String> names, Integer degree) {
+	public List<QueryResponse> findGraph(String search, Integer degree) {
 
+		List<String> names = search != null ? new ArrayList<String>(Arrays.asList(search.split(","))) : new ArrayList<String>();
 		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
 		List<String> queryStatements = new ArrayList<String>();
 		
@@ -133,12 +133,15 @@ public class Neo4jService {
 	}
 	
 	public String getFilteredString(String name) {
-		return "'" + name.replace("'", "\\'") + "'";
+		String result = "'" + name.replace("'", "\\'") + "'";
+//		System.out.println(result);
+		return result;
 	}
 	
-	public GraphResponseDTO findBlacklist(GraphResponseDTO graphResponseDTO, List<String> blacklist) {
+	public GraphResponseDTO findFilters(GraphResponseDTO graphResponseDTO, String filterString) {
 		
-		if (blacklist.size() == 1 && blacklist.get(0) == "") {
+		List<String> filters = filterString != null ? new ArrayList<String>(Arrays.asList(filterString.split(","))) : new ArrayList<String>();
+		if (filters.size() == 1 && filters.get(0) == "") {
 			return graphResponseDTO;
 		}
 		
@@ -149,22 +152,31 @@ public class Neo4jService {
 		for(NodeObject node : graphResponseDTO.getGraph().getNodes()) {
 			List<String> queryStatements = new ArrayList<String>();
 			nodeMap.put(node.getId(), node);
-			//for each node, check it's properties against the blacklist
-			for (String value : blacklist) {
+			//for each node, check it's properties against the filters
+			for (String filter : filters) {
+				//get node if properties contain filter
 				queryStatements.add(
 					"MATCH (n) " + 
 					"WHERE n.name = " + getFilteredString(node.getLabel()) + " " + 
 					"MATCH (n)-[r]-(m) " + 
-					"WHERE any(prop in keys(m) WHERE TOSTRING(m[prop]) CONTAINS " + getFilteredString(value) + ") " + 
-					"RETURN n,r,m"
+					"WHERE any(prop in keys(m) WHERE TOSTRING(m[prop]) CONTAINS " + getFilteredString(filter) + ") " + 
+					"RETURN m"
+				);
+				//get the relationship of the above node
+				queryStatements.add(
+					"MATCH (n) " + 
+					"WHERE n.name = " + getFilteredString(node.getLabel()) + " " + 
+					"MATCH (n)-[r]-(m) " + 
+					"WHERE any(prop in keys(m) WHERE TOSTRING(m[prop]) CONTAINS " + getFilteredString(filter) + ") " + 
+					"RETURN r"
 				);
 			}
-			//for blacklist edge
+			//for filter edge
 			queryStatements.add(
 				"MATCH (n) " + 
 				"WHERE n.name = " + getFilteredString(node.getLabel()) + " " + 
 				"MATCH (n)-[r]-(m) " + 
-				"WHERE any(item in " + getArrayString(blacklist) + " WHERE type(r) CONTAINS item) " + 
+				"WHERE any(item in " + getArrayString(filters) + " WHERE type(r) CONTAINS item) " + 
 				"RETURN n,r,m"
 			);
 			queryResponses.add(apiService.queryWithoutCommit(queryStatements));
@@ -182,7 +194,6 @@ public class Neo4jService {
 				for (Data data: result.getData()) {
 					
 					for (Node nodeData : data.getGraph().getNodes()) {
-						
 						if (!nodeMap.containsKey(nodeData.getId())) {
 							NodeObject node = new NodeObject(
 									nodeData.getId(), 
@@ -190,13 +201,17 @@ public class Neo4jService {
 									(String) nodeData.getProperties().get("name"),
 									nodeData.getProperties()
 							);
-							node.setColor("#ff0000");
+							if (data.getGraph().getNodes().size() == 1) {
+								node.setColor("#ff0000");
+							}
 							nodeMap.put(nodeData.getId(), node);
 							nodes.add(node);
 							
 						} else {
 							NodeObject node = nodeMap.get(nodeData.getId());
-							node.setColor("#ff0000");
+							if (data.getGraph().getNodes().size() == 1) {
+								node.setColor("#ff0000");
+							}
 							for (NodeObject currentNode : nodes) {
 								if (currentNode.getId() == nodeData.getId()) {
 									currentNode = node;
@@ -207,7 +222,6 @@ public class Neo4jService {
 					}
 					
 					for (Relationship relationship : data.getGraph().getRelationships()) {
-						
 						if (!edgeMap.containsKey(relationship.getId())) {
 							EdgeObject edge = new EdgeObject(
 								relationship.getId(), 
@@ -254,6 +268,17 @@ public class Neo4jService {
 					e.printStackTrace();
 				}
 //			}
+		}
+	}
+	
+	public void print(Object object) {
+		
+		try {
+			String messageJsonString = objectMapper.writeValueAsString(object);
+			System.out.println(messageJsonString);
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
