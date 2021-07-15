@@ -93,6 +93,7 @@ public class ApiService {
 		QueryRequest queryRequest = new QueryRequest();
 		List<String> resultDataContents = new ArrayList<String>();
 		resultDataContents.add("graph");
+		resultDataContents.add("row");
 
 		List<Statement> statements = new ArrayList<Statement>();
 		for (String queryStatement : queryStatements) {
@@ -117,7 +118,7 @@ public class ApiService {
 		for (Result result : queryResponse.getResults()) {
 			for (Data data : result.getData()) {
 				try {
-					String messageJsonString = objectMapper.writeValueAsString(data.getGraph());
+					String messageJsonString = objectMapper.writeValueAsString(data);
 					System.out.println(messageJsonString);
 				} catch (JsonProcessingException e) {
 					// TODO Auto-generated catch block

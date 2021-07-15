@@ -38,11 +38,10 @@ public class SearchController {
 	}
 	
 	@RequestMapping(method=RequestMethod.GET, path= {"/findNeighbors"})
-	public ResponseEntity<GraphResponseDTO> findNeighbors(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(required=true) String filter) {
+	public ResponseEntity<GraphResponseDTO> findNeighbors(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search) {
 		
 		List<QueryResponse> queryResponse = neo4jService.findNeighbors(search);
 		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponse);
-		graphResponseDTO = neo4jService.findFilters(graphResponseDTO, filter);
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 	
@@ -58,8 +57,7 @@ public class SearchController {
 	@RequestMapping(method=RequestMethod.GET, path= {"/findPageRankGraph"})
 	public ResponseEntity<GraphResponseDTO> findPageRankGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(required=true) String filter) {
 		
-		List<QueryResponse> queryResponse = neo4jService.findPageRankGraph(search);
-		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponse);
+		GraphResponseDTO graphResponseDTO = neo4jService.findPageRankGraph(search);
 		graphResponseDTO = neo4jService.findFilters(graphResponseDTO, filter);
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}

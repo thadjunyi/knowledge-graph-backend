@@ -10,6 +10,9 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import sg.gov.csit.knowledgeGraph.domain.Response.Data;
 import sg.gov.csit.knowledgeGraph.domain.Response.Node;
 import sg.gov.csit.knowledgeGraph.domain.Response.QueryResponse;
@@ -25,6 +28,9 @@ public class DTOToDomainTransformer {
 	
 	@Autowired
 	ModelMapper modelMapper;
+	
+	@Autowired
+	ObjectMapper objectMapper;
 
 	public GraphResponseDTO convertQueryResponseToGraphResponseDTO(String search, List<QueryResponse> queryResponses) {
 		
@@ -55,7 +61,7 @@ public class DTOToDomainTransformer {
 							);
 							for (String name : names) {
 								if (name.equals(node.getLabel())) {
-									node.setSize(20);
+									node.setSize(30);
 									break;
 								}
 							}
@@ -86,5 +92,16 @@ public class DTOToDomainTransformer {
 		graphObject.setEdges(edges);
 		graphResponseDTO.setGraph(graphObject);
 		return graphResponseDTO;
-	} 
+	}
+		
+	public void printResult(Object object) {
+		
+		try {
+			String messageJsonString = objectMapper.writeValueAsString(object);
+			System.out.println("Message: " + messageJsonString);
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }

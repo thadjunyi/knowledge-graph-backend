@@ -19,6 +19,7 @@ import sg.gov.csit.knowledgeGraph.domain.Response.QueryResponse;
 import sg.gov.csit.knowledgeGraph.domain.Response.Relationship;
 import sg.gov.csit.knowledgeGraph.domain.Response.Result;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.EdgeObject;
+import sg.gov.csit.knowledgeGraph.domain.fieldObject.GraphObject;
 import sg.gov.csit.knowledgeGraph.domain.fieldObject.NodeObject;
 import sg.gov.csit.knowledgeGraph.web.dto.response.GraphResponseDTO;
 
@@ -119,13 +120,75 @@ public class Neo4jService {
 		return queryResponses;
 	}
 	
-	public List<QueryResponse> findPageRankGraph(String search) {
+	public GraphResponseDTO findPageRankGraph(String search) {
 
 		List<String> names = search != null ? new ArrayList<String>(Arrays.asList(search.split(","))) : new ArrayList<String>();
-		List<QueryResponse> queryResponses = new ArrayList<QueryResponse>();
+
+		GraphResponseDTO graphResponseDTO = new GraphResponseDTO();
 		List<String> queryStatements = new ArrayList<String>();
 		
-		return findAll();
+		String query = "";
+		List<String> sourceNodes = new ArrayList<String>();
+		for (int i=0; i<names.size(); i++) {
+			query += "MATCH (n" + i + ") " +
+					 "WHERE n" + i + ".name CONTAINS " + getFilteredString(names.get(i)) + " ";
+			sourceNodes.add("n" + i);
+		}
+		
+		queryStatements.add(
+				query +
+				"CALL gds.pageRank.stream('graph', { " +
+				" maxIterations: 20, " +
+				" dampingFactor: 0.85, " +
+				" sourceNodes: " + sourceNodes.toString() + " " +
+				"}) " +
+				"YIELD nodeId, score " +
+				"WHERE score > 0 " + 
+				"RETURN nodeId, score " +
+				"ORDER BY score DESC "
+		);
+		QueryResponse pageRankQueryResponse = apiService.queryWithoutCommit(queryStatements);
+		
+		GraphObject graphObject = new GraphObject();
+		List<NodeObject> nodes = new ArrayList<NodeObject>();
+		List<EdgeObject> edges = new ArrayList<EdgeObject>();
+
+		for (Result result : pageRankQueryResponse.getResults()) {
+			for (Data data: result.getData()) {
+				if (data.getRow().size() == 2) {
+					Integer id = (Integer) data.getRow().get(0);
+					Double score = (Double) data.getRow().get(1);
+					
+					queryStatements.clear();
+					queryStatements.add(
+							"MATCH (n) " + 
+							"WHERE id(n) = " + id + " " + 
+							"RETURN n"
+					);
+					QueryResponse queryResponse = apiService.queryWithoutCommit(queryStatements);
+					
+					for (Node nodeData : queryResponse.getResults().get(0).getData().get(0).getGraph().getNodes()) {
+						NodeObject node = new NodeObject(
+							nodeData.getId(), 
+							nodeData.getLabels().get(0),
+							(String) nodeData.getProperties().get("name"),
+							nodeData.getProperties()
+						);
+						if (names.contains(node.getLabel())) {
+							node.setSize(30);
+						} else {
+							node.setSize((int) (node.getSize() + (100 * score)));
+							node.setColor("#00ff00");
+						}
+						nodes.add(node);
+					}
+				}
+			}
+		}
+		graphObject.setNodes(nodes);
+		graphObject.setEdges(edges);
+		graphResponseDTO.setGraph(graphObject);
+		return graphResponseDTO;
 	}
 	
 	public String getArrayString(List<String> names) {
@@ -280,7 +343,7 @@ public class Neo4jService {
 		}
 	}
 	
-	public void print(Object object) {
+	public void printResult(Object object) {
 		
 		try {
 			String messageJsonString = objectMapper.writeValueAsString(object);
