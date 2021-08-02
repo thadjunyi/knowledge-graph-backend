@@ -32,10 +32,10 @@ public class DTOToDomainTransformer {
 	@Autowired
 	ObjectMapper objectMapper;
 
-	public GraphResponseDTO convertQueryResponseToGraphResponseDTO(String search, List<QueryResponse> queryResponses) {
-		
+	public GraphResponseDTO convertQueryResponseToGraphResponseDTO(String search, List<QueryResponse> queryResponses, List<Long> ids) {
+
 //		java.lang.reflect.Type targetType = new TypeToken<Map<String, Object>>() {}.getType();
-		List<String> names = search != null ? new ArrayList<String>(Arrays.asList(search.split(","))) : new ArrayList<String>();
+		List<String> names = search != null ? new ArrayList<String>(Arrays.asList(search.split("\\|"))) : new ArrayList<String>();
 
 		GraphResponseDTO graphResponseDTO = new GraphResponseDTO();
 		Map<Long, NodeObject> nodeMap = new HashMap<Long, NodeObject>();
@@ -50,20 +50,19 @@ public class DTOToDomainTransformer {
 				for (Data data: result.getData()) {
 					
 					for (Node nodeData : data.getGraph().getNodes()) {
-						
 						if (!nodeMap.containsKey(nodeData.getId())) {
 //							Map<String, Object> map = modelMapper.map(nodeData.getProperties(), targetType);
 							NodeObject node = new NodeObject(
 									nodeData.getId(), 
-									nodeData.getLabels().get(0),
+									nodeData.getLabels().size() == 0 ? "" : nodeData.getLabels().get(0),
 									(String) nodeData.getProperties().get("name"),
 									nodeData.getProperties()
 							);
-							for (String name : names) {
-								if (name.equals(node.getLabel())) {
-									node.setSize(30);
-									break;
-								}
+							if (names.contains(node.getLabel())) {
+								node.setSize(30);
+							} else if (ids.contains(node.getId())) {
+								node.setSize(25 - (ids.indexOf(node.getId()) * 2));
+								node.setColor("#00ff00");
 							}
 							nodes.add(node);
 							nodeMap.put(nodeData.getId(), node);
@@ -76,7 +75,8 @@ public class DTOToDomainTransformer {
 							edgeMap.put(relationship.getId(), relationship.getProperties().getName());
 							EdgeObject edge = new EdgeObject(
 								relationship.getId(), 
-								relationship.getType(),
+								"",
+//								relationship.getType(),
 								relationship.getStartNode(),
 								nodeMap.get(relationship.getStartNode()).getLabel(),
 								relationship.getEndNode(),
@@ -94,7 +94,7 @@ public class DTOToDomainTransformer {
 		return graphResponseDTO;
 	}
 		
-	public void printResult(Object object) {
+	public void print(Object object) {
 		
 		try {
 			String messageJsonString = objectMapper.writeValueAsString(object);

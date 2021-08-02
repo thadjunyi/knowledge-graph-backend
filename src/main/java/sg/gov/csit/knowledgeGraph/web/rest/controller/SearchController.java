@@ -1,5 +1,6 @@
 package sg.gov.csit.knowledgeGraph.web.rest.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -12,6 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import sg.gov.csit.knowledgeGraph.domain.Response.QueryResponse;
 import sg.gov.csit.knowledgeGraph.service.Neo4jService;
@@ -29,36 +33,58 @@ public class SearchController {
 	DTOToDomainTransformer dTOToDomainTransformer;
 
 	@RequestMapping(method=RequestMethod.GET, path= {"/getAll"})
-	public ResponseEntity<GraphResponseDTO> getAll(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=false) String search, @RequestParam(required=false) String filter) {
+	public ResponseEntity<GraphResponseDTO> getAll(HttpServletRequest request, HttpServletResponse response) {
 		
-		List<QueryResponse> queryResponse = neo4jService.findAll();
-		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponse);
-		graphResponseDTO = neo4jService.findFilters(graphResponseDTO, filter);
+		List<QueryResponse> queryResponses = neo4jService.findAll();
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO("", queryResponses, new ArrayList<Long>());
+		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
+	}
+
+	@RequestMapping(method=RequestMethod.GET, path= {"/getAllRecommended"})
+	public ResponseEntity<GraphResponseDTO> getAllRecommended(HttpServletRequest request, HttpServletResponse response) {
+		
+		GraphResponseDTO graphResponseDTO = neo4jService.findAllRecommended();
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 	
 	@RequestMapping(method=RequestMethod.GET, path= {"/findNeighbors"})
 	public ResponseEntity<GraphResponseDTO> findNeighbors(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search) {
-		
-		List<QueryResponse> queryResponse = neo4jService.findNeighbors(search);
-		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponse);
+
+		List<QueryResponse> queryResponses = neo4jService.findNeighbors(search);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponses, new ArrayList<Long>());
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 	
 	@RequestMapping(method=RequestMethod.GET, path= {"/findSearchGraph"})
-	public ResponseEntity<GraphResponseDTO> findSearchGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(defaultValue="1") Integer degree, @RequestParam(required=true) String filter) {
-		
-		List<QueryResponse> queryResponse = neo4jService.findSearchGraph(search, degree);
-		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponse);
-		graphResponseDTO = neo4jService.findFilters(graphResponseDTO, filter);
+	public ResponseEntity<GraphResponseDTO> findSearchGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(defaultValue="1") Integer degree) {
+
+		List<QueryResponse> queryResponses = neo4jService.findSearchGraph(search, degree);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponses, new ArrayList<Long>());
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 	
 	@RequestMapping(method=RequestMethod.GET, path= {"/findPageRankGraph"})
-	public ResponseEntity<GraphResponseDTO> findPageRankGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(required=true) String filter) {
-		
-		GraphResponseDTO graphResponseDTO = neo4jService.findPageRankGraph(search);
-		graphResponseDTO = neo4jService.findFilters(graphResponseDTO, filter);
+	public ResponseEntity<GraphResponseDTO> findPageRankGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(defaultValue="1") Integer degree) {
+
+		GraphResponseDTO graphResponseDTO = neo4jService.findPersonalizedPageRankGraph(search, degree);
+		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
+	}
+	
+	@RequestMapping(method=RequestMethod.GET, path= {"/findLinkageGraph"})
+	public ResponseEntity<GraphResponseDTO> findLinkageGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search) {
+
+		List<QueryResponse> queryResponses = neo4jService.findLinkageGraph(search);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponses, new ArrayList<Long>());
+		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
+	}
+	
+	@RequestMapping(method=RequestMethod.GET, path= {"/findFocusGraph"})
+	public ResponseEntity<GraphResponseDTO> findFocusGraph(HttpServletRequest request, HttpServletResponse response, @RequestParam(required=true) String search, @RequestParam(required=true) String typeFilter, @RequestParam(required=true) Integer nodesNum) {
+
+		List<QueryResponse> focusGraphIdQueryResponses = neo4jService.findFocusGraphIDQueryResponse(search, typeFilter, nodesNum);
+		List<Long> ids = neo4jService.getIds(search, focusGraphIdQueryResponses, nodesNum);
+		List<QueryResponse> queryResponses = neo4jService.getShortestPathQueryResponses(search, ids);
+		GraphResponseDTO graphResponseDTO = dTOToDomainTransformer.convertQueryResponseToGraphResponseDTO(search, queryResponses, ids);
 		return new ResponseEntity<GraphResponseDTO>(graphResponseDTO, HttpStatus.OK);
 	}
 }

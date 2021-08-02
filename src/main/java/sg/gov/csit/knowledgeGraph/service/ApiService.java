@@ -1,6 +1,7 @@
 package sg.gov.csit.knowledgeGraph.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.modelmapper.ModelMapper;
@@ -67,9 +68,12 @@ public class ApiService {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBasicAuth(neo4jUsername, neo4jPassword);
 		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 		
+		print(queryStatements);
 		QueryRequest queryRequest = getQueryRequest(queryStatements);
-			
+//		print(queryRequest);
+		
 		try {
 			ResponseEntity<QueryResponse> response = restTemplate.exchange(
 					url, 
@@ -84,7 +88,7 @@ public class ApiService {
 			logger.debug("Unable to connect to {}:", url, e);
 		}
 		
-//		printResult(queryResponse);
+//		print(queryResponse);
 		return queryResponse;
 	}
 	
@@ -128,11 +132,11 @@ public class ApiService {
 		}
 	}
 	
-	public void printResult(Object object) {
+	public void print(Object object) {
 		
 		try {
 			String messageJsonString = objectMapper.writeValueAsString(object);
-			System.out.println("Message: " + messageJsonString);
+			System.out.println(messageJsonString);
 		} catch (JsonProcessingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
